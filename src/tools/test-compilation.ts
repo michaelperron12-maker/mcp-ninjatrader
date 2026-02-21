@@ -162,7 +162,8 @@ function checkStateEnums(code: string, errors: CompilationError[]): void {
     'Transition', 'Realtime', 'Terminated', 'Finalized'
   ];
 
-  const stateRefRegex = /State\.(\w+)/g;
+  // \b ensures we match standalone "State." not "OrderState." or "ExecutionState."
+  const stateRefRegex = /\bState\.(\w+)/g;
   let match;
 
   while ((match = stateRefRegex.exec(code)) !== null) {

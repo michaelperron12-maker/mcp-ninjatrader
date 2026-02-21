@@ -53,7 +53,9 @@
     "BarsPeriodType": ["Minute", "Day", "Week", "Month", "Year", "Volume", "Range", "Second", "Tick"],
     "OrderAction": ["Buy", "BuyToCover", "Sell", "SellShort"],
     "EntryHandling": ["AllEntries", "UniqueEntries"],
-    "StartBehavior": ["AdoptAccountPosition", "ImmediatelySubmit", "ImmediatelySubmitSynchronizeAccount", "WaitUntilFlat", "WaitUntilFlatSynchronizeAccount"]
+    "StartBehavior": ["AdoptAccountPosition", "ImmediatelySubmit", "ImmediatelySubmitSynchronizeAccount", "WaitUntilFlat", "WaitUntilFlatSynchronizeAccount"],
+    "OrderState": ["Initialized", "Submitted", "Accepted", "Working", "ChangeSubmitted", "CancelSubmitted", "Cancelled", "Rejected", "PartFilled", "Filled", "TriggerPending"],
+    "ConnectionStatus": ["Connected", "ConnectionLost", "Disconnected"]
   },
   "strategyMethods": {
     "EnterLong": "EnterLong(int quantity, string signalName)",
