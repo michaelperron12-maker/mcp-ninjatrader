@@ -1,0 +1,18 @@
+[Unit]
+Description=NinjaTrader 8 Script Generator API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/mcp-ninjatrader
+ExecStart=/usr/bin/node api/server.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=8921
+Environment=SCRIPTS_DIR=/opt/mcp-ninjatrader/scripts
+Environment=OUTPUT_DIR=/opt/mcp-ninjatrader/generated
+
+[Install]
+WantedBy=multi-user.target

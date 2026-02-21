@@ -1,0 +1,289 @@
+openapi: 3.1.0
+info:
+  title: NinjaTrader 8 Script Generator API
+  description: |
+    API pour générer, auditer et livrer des scripts NinjaTrader 8 (NinjaScript C#).
+    Pipeline multi-agents: génération → mise à jour best practices → audit 12 checks → test compilation → livraison.
+    Knowledge base embarqué: 22 patterns NT8, 7 scripts de référence, 15 erreurs documentées.
+  version: 1.0.0
+servers:
+  - url: https://seoparai.com
+    description: Production SeoAI
+
+paths:
+  /api/nt8/scripts:
+    get:
+      operationId: listScripts
+      summary: Liste les 7 scripts NinjaTrader 8 disponibles
+      description: Retourne la liste de tous les scripts existants avec descriptions, types, indicateurs utilisés et nombre de lignes.
+      responses:
+        '200':
+          description: Liste des scripts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string
+                    description: Liste formatée des scripts en markdown
+
+  /api/nt8/scripts/{name}:
+    get:
+      operationId: getScript
+      summary: Récupère le code source complet d'un script existant
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Nom complet ou partiel du script (ex RSI, Harmonic, MACD)
+      responses:
+        '200':
+          description: Code source du script
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string
+
+  /api/nt8/generate:
+    post:
+      operationId: generateScript
+      summary: Génère le contexte pour créer un script NinjaTrader 8
+      description: Assemble le knowledge base NT8 (22 patterns, scripts de référence, erreurs documentées) et retourne le contexte complet pour générer du code C# NinjaScript. Vous devez ensuite écrire le code en suivant le contexte fourni.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - description
+              properties:
+                description:
+                  type: string
+                  description: Description en langage naturel du script voulu (français ou anglais)
+                type:
+                  type: string
+                  enum: [indicator, strategy]
+                  description: Type de script (auto-détecté si omis)
+                instrument:
+                  type: string
+                  description: Instrument cible (ex NQ, ES, CL)
+                timeframe:
+                  type: string
+                  description: Timeframe (ex 512 tick, 5 min)
+      responses:
+        '200':
+          description: Contexte de génération
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string
+
+  /api/nt8/update:
+    post:
+      operationId: updateCode
+      summary: Vérifie et corrige le code selon les best practices NT8
+      description: Vérifie namespaces, using statements, méthodes dépréciées et patterns modernes. Applique les corrections automatiquement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Code C# NinjaScript à vérifier
+                script_type:
+                  type: string
+                  enum: [indicator, strategy]
+      responses:
+        '200':
+          description: Code mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string
+
+  /api/nt8/audit:
+    post:
+      operationId: auditScript
+      summary: Audit complet du code NinjaScript (12 checks)
+      description: |
+        Vérifie: Brush serialization, anti-doublon OnEachTick, panel visibility,
+        propriétés NinjaScriptProperty, multi-timeframe safety, memory leaks,
+        signal tags uniques, alerts State.Realtime, structure OnStateChange,
+        strategy signal matching.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Code C# NinjaScript à auditer
+                strict:
+                  type: boolean
+                  default: false
+                  description: Mode strict (warnings deviennent erreurs)
+                auto_fix:
+                  type: boolean
+                  default: true
+                  description: Auto-corriger les problèmes fixables
+      responses:
+        '200':
+          description: Résultat d'audit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string
+                  audit:
+                    type: object
+
+  /api/nt8/test:
+    post:
+      operationId: testCompilation
+      summary: Analyse statique de compilation du code NinjaScript
+      description: Vérifie structure de classe, types NT8 valides, méthodes Draw valides, états valides, éléments requis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Code C# NinjaScript à tester
+      responses:
+        '200':
+          description: Résultat de test
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string
+                  test:
+                    type: object
+
+  /api/nt8/validate:
+    post:
+      operationId: validateAndDeliver
+      summary: Pipeline complet de validation et livraison
+      description: Prend du code NinjaScript et le passe par update best practices, audit 12 checks, test compilation, et livraison. Utilisez cet endpoint après avoir généré le code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - name
+                - type
+              properties:
+                code:
+                  type: string
+                  description: Code C# NinjaScript à valider et livrer
+                name:
+                  type: string
+                  description: Nom du script (ex RSI_Volume_Crossover)
+                type:
+                  type: string
+                  enum: [indicator, strategy]
+                  description: Type de script
+                description:
+                  type: string
+                  description: Description courte du script
+                auto_fix:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Rapport de validation complet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string
+
+  /api/nt8/pipeline:
+    post:
+      operationId: runPipeline
+      summary: Pipeline complet de génération NinjaTrader 8
+      description: Assemble le knowledge base NT8 complet pour générer un script. Retourne le contexte avec instructions, patterns, scripts de référence et template. Après avoir reçu le contexte, vous devez générer le code C# puis appeler validateAndDeliver.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - description
+              properties:
+                description:
+                  type: string
+                  description: Description en langage naturel du script voulu
+                type:
+                  type: string
+                  enum: [indicator, strategy]
+                instrument:
+                  type: string
+                timeframe:
+                  type: string
+                auto_fix:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Contexte de génération complet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: string

@@ -11,13 +11,17 @@
     "build": "tsc && cp src/knowledge/*.json dist/knowledge/ && mkdir -p dist/templates && cp src/templates/*.template dist/templates/",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "api": "node api/server.js",
+    "api:dev": "node --watch api/server.js"
   },
   "keywords": ["mcp", "ninjatrader", "trading", "ninjascript"],
   "author": "SeoAI <michaelperron12@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
