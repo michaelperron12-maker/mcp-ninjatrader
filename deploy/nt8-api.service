@@ -13,6 +13,7 @@ Environment=NODE_ENV=production
 Environment=PORT=8921
 Environment=SCRIPTS_DIR=/opt/mcp-ninjatrader/scripts
 Environment=OUTPUT_DIR=/opt/mcp-ninjatrader/generated
+Environment=ANTHROPIC_API_KEY=PLACEHOLDER_KEY
 
 [Install]
 WantedBy=multi-user.target

@@ -19,6 +19,7 @@
   "author": "SeoAI <michaelperron12@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",

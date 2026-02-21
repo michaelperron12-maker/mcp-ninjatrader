@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NinjaTrader 8 Script Generator — SeoAI</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0e17;--bg2:#141929;--card:#1a1f35;--border:#2a3555;
+  --text:#e0e0e0;--text2:#8899bb;--muted:#556688;
+  --blue:#60a5fa;--blue-dark:#2563eb;--green:#10b981;--red:#ef4444;--yellow:#fbbf24;
+  --font:'Segoe UI',system-ui,sans-serif;--mono:'Consolas','Courier New',monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+body{display:flex;flex-direction:column;overflow:hidden}
+
+/* Header */
+.header{background:linear-gradient(135deg,#141929,#0d1220);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.header .logo{font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--blue),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .title{font-size:.95rem;color:var(--text2);flex:1}
+.header .badge{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--green);background:rgba(16,185,129,.1);padding:4px 10px;border-radius:20px}
+.header .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Pipeline */
+.pipeline{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:4px;flex-shrink:0;overflow-x:auto}
+.pipe-step{display:flex;align-items:center;gap:4px;font-size:.7rem;color:var(--muted);white-space:nowrap}
+.pipe-circle{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.65rem;transition:all .3s}
+.pipe-line{width:20px;height:2px;background:var(--border);transition:background .3s}
+.pipe-step.active .pipe-circle{border-color:var(--blue);color:var(--blue);box-shadow:0 0 10px rgba(96,165,250,.4);animation:glow 1.5s infinite}
+.pipe-step.done .pipe-circle{border-color:var(--green);background:var(--green);color:#fff}
+.pipe-step.error .pipe-circle{border-color:var(--red);background:var(--red);color:#fff}
+.pipe-step.done~.pipe-line,.pipe-step.active~.pipe-line{background:var(--blue)}
+.pipe-step.done .pipe-label{color:var(--green)}
+.pipe-step.active .pipe-label{color:var(--blue)}
+@keyframes glow{0%,100%{box-shadow:0 0 5px rgba(96,165,250,.3)}50%{box-shadow:0 0 15px rgba(96,165,250,.6)}}
+
+/* Chat area */
+.chat-area{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.chat-area::-webkit-scrollbar{width:6px}
+.chat-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* Messages */
+.msg{max-width:85%;display:flex;gap:10px;animation:fadeIn .3s}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg.bot{align-self:flex-start}
+.msg-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0}
+.msg.bot .msg-avatar{background:linear-gradient(135deg,var(--blue-dark),#7c3aed);color:#fff}
+.msg.user .msg-avatar{background:var(--blue-dark);color:#fff}
+.msg-bubble{padding:12px 16px;border-radius:16px;font-size:.9rem;line-height:1.5;word-wrap:break-word;overflow-wrap:break-word}
+.msg.bot .msg-bubble{background:var(--card);border:1px solid var(--border);border-top-left-radius:4px}
+.msg.user .msg-bubble{background:var(--blue-dark);border-top-right-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Code blocks */
+.code-block{background:#0d1117;border:1px solid var(--border);border-radius:8px;margin:10px 0;position:relative;overflow:hidden}
+.code-header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border);font-size:.75rem;color:var(--muted)}
+.code-block pre{padding:12px;overflow-x:auto;font-family:var(--mono);font-size:.8rem;line-height:1.6;margin:0}
+.code-block code{color:var(--text)}
+.code-btn{background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.7rem;transition:all .2s}
+.code-btn:hover{background:var(--blue-dark);color:#fff;border-color:var(--blue)}
+.code-actions{display:flex;gap:6px;padding:8px 12px;border-top:1px solid var(--border)}
+
+/* Syntax highlighting */
+.hl-kw{color:#ff7b72}
+.hl-type{color:#d2a8ff}
+.hl-str{color:#a5d6ff}
+.hl-comment{color:#8b949e;font-style:italic}
+.hl-num{color:#79c0ff}
+.hl-attr{color:#ffa657}
+
+/* Pipeline report card */
+.pipe-report{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;font-size:.8rem}
+.pipe-report .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:600}
+.badge-pass{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-warn{background:rgba(251,191,36,.15);color:var(--yellow)}
+.badge-fail{background:rgba(239,68,68,.15);color:var(--red)}
+
+/* Typing indicator */
+.typing{display:flex;gap:4px;padding:8px 12px;align-items:center}
+.typing span{width:7px;height:7px;background:var(--text2);border-radius:50%;animation:bounce .6s infinite alternate}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{to{transform:translateY(-6px);opacity:.3}}
+
+/* Input */
+.input-area{background:var(--bg2);border-top:1px solid var(--border);padding:14px 20px;flex-shrink:0}
+.input-row{display:flex;gap:10px;align-items:flex-end}
+.input-row textarea{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;color:var(--text);font-family:var(--font);font-size:.9rem;resize:none;min-height:46px;max-height:120px;outline:none;transition:border-color .2s}
+.input-row textarea:focus{border-color:var(--blue)}
+.input-row textarea::placeholder{color:var(--muted)}
+.attach-btn{width:46px;height:46px;border-radius:12px;border:1px solid var(--border);background:var(--card);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.attach-btn:hover{border-color:var(--blue);background:rgba(96,165,250,.1)}
+.attach-btn.active{border-color:var(--blue);background:rgba(96,165,250,.15)}
+.send-btn{width:46px;height:46px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--blue-dark),#7c3aed);color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s,opacity .2s;flex-shrink:0}
+.send-btn:hover{transform:scale(1.05)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.input-info{font-size:.65rem;color:var(--muted);text-align:center;margin-top:6px}
+
+/* Quick actions */
+.quick-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.quick-btn{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);color:var(--blue);padding:6px 12px;border-radius:20px;font-size:.75rem;cursor:pointer;transition:all .2s;font-family:var(--font)}
+.quick-btn:hover{background:rgba(96,165,250,.15);border-color:var(--blue)}
+
+/* Category cards */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.cat-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;transition:all .2s}
+.cat-card:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:0 4px 15px rgba(96,165,250,.15)}
+.cat-card.active{border-color:var(--blue);background:rgba(96,165,250,.08)}
+.cat-icon{font-size:1.4rem;margin-bottom:6px}
+.cat-title{font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:2px}
+.cat-desc{font-size:.65rem;color:var(--muted);line-height:1.3}
+
+/* Example cards inside category */
+.example-list{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.example-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .2s;display:flex;align-items:flex-start;gap:10px}
+.example-card:hover{border-color:var(--green);background:rgba(16,185,129,.05)}
+.example-num{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--blue-dark),#7c3aed);color:#fff;font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.example-content{flex:1}
+.example-title{font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:3px}
+.example-detail{font-size:.7rem;color:var(--text2);line-height:1.3}
+.example-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.example-tag{font-size:.6rem;padding:2px 6px;border-radius:8px;background:rgba(96,165,250,.1);color:var(--blue)}
+
+/* Modifier panel */
+.modifier-panel{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin:10px 0}
+.modifier-panel h4{font-size:.8rem;color:var(--blue);margin-bottom:8px}
+.mod-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.mod-label{font-size:.7rem;color:var(--text2);width:90px;flex-shrink:0}
+.mod-input{flex:1;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--font);font-size:.75rem;outline:none}
+.mod-input:focus{border-color:var(--blue)}
+.mod-select{flex:1;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--font);font-size:.75rem;outline:none;appearance:none;-webkit-appearance:none}
+.mod-btn{background:linear-gradient(135deg,var(--blue-dark),#7c3aed);border:none;color:#fff;padding:8px 20px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;width:100%;margin-top:4px;transition:transform .2s;font-family:var(--font)}
+.mod-btn:hover{transform:scale(1.02)}
+@media(max-width:768px){.cat-grid{grid-template-columns:1fr}}
+
+/* Mobile */
+@media(max-width:768px){
+  .header .title{display:none}
+  .pipeline{padding:8px 10px;gap:2px}
+  .pipe-step{font-size:.6rem}
+  .pipe-circle{width:20px;height:20px;font-size:.55rem}
+  .pipe-line{width:10px}
+  .pipe-label{display:none}
+  .msg{max-width:95%}
+  .chat-area{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">SeoAI</div>
+  <div class="title">NinjaTrader 8 Script Generator</div>
+  <div class="badge"><span class="dot"></span>En ligne</div>
+</div>
+
+<!-- Pipeline progress -->
+<div class="pipeline">
+  <div class="pipe-step" id="step-context">
+    <div class="pipe-circle">1</div>
+    <span class="pipe-label">Contexte</span>
+  </div>
+  <div class="pipe-line"></div>
+  <div class="pipe-step" id="step-generation">
+    <div class="pipe-circle">2</div>
+    <span class="pipe-label">Generation</span>
+  </div>
+  <div class="pipe-line"></div>
+  <div class="pipe-step" id="step-audit">
+    <div class="pipe-circle">3</div>
+    <span class="pipe-label">Audit</span>
+  </div>
+  <div class="pipe-line"></div>
+  <div class="pipe-step" id="step-test">
+    <div class="pipe-circle">4</div>
+    <span class="pipe-label">Test</span>
+  </div>
+  <div class="pipe-line"></div>
+  <div class="pipe-step" id="step-delivery">
+    <div class="pipe-circle">5</div>
+    <span class="pipe-label">Livraison</span>
+  </div>
+</div>
+
+<!-- Chat area -->
+<div class="chat-area" id="chat-area">
+  <!-- Welcome message -->
+  <div class="msg bot">
+    <div class="msg-avatar">AI</div>
+    <div class="msg-bubble">
+      <strong>Bonjour!</strong> Je suis votre assistant NinjaTrader 8.<br>
+      Je genere, audite et teste vos scripts C# NinjaScript.<br><br>
+      <strong>Choisissez une categorie:</strong>
+      <div class="cat-grid">
+        <div class="cat-card" onclick="showCategory('indicators')">
+          <div class="cat-icon">📊</div>
+          <div class="cat-title">Indicateurs</div>
+          <div class="cat-desc">RSI, MACD, EMA, Bollinger, Volume, signaux visuels</div>
+        </div>
+        <div class="cat-card" onclick="showCategory('strategies')">
+          <div class="cat-icon">🤖</div>
+          <div class="cat-title">Strategies Auto</div>
+          <div class="cat-desc">Entrees/sorties, stop loss, take profit, breakeven</div>
+        </div>
+        <div class="cat-card" onclick="showCategory('signals')">
+          <div class="cat-icon">🔔</div>
+          <div class="cat-title">Alertes & Signaux</div>
+          <div class="cat-desc">Fleches, sons, notifications, zones colorees</div>
+        </div>
+        <div class="cat-card" onclick="showCategory('existing')">
+          <div class="cat-icon">📂</div>
+          <div class="cat-title">Scripts Existants</div>
+          <div class="cat-desc">Voir les 7 scripts deja crees, modifier, ameliorer</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:.7rem;color:var(--muted);margin-top:4px">ou ecrivez directement votre demande ci-dessous</div>
+    </div>
+  </div>
+</div>
+
+<!-- Input area -->
+<div class="input-area">
+  <div class="input-row">
+    <button class="attach-btn" id="attach-btn" onclick="toggleCodePaste()" title="Coller un script existant">📎</button>
+    <textarea id="user-input" placeholder="Decrivez votre indicateur ou strategie..." rows="1" onkeydown="handleKey(event)"></textarea>
+    <button class="send-btn" id="send-btn" onclick="sendMessage()">&#10148;</button>
+  </div>
+  <div id="code-paste-area" style="display:none;margin-top:8px">
+    <textarea id="paste-code" placeholder="Collez votre code C# NinjaScript ici pour le modifier, auditer ou ameliorer..." style="width:100%;min-height:100px;max-height:200px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:.75rem;resize:vertical;outline:none"></textarea>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button class="quick-btn" onclick="sendWithCode('Audite ce script et corrige les erreurs')">Auditer</button>
+      <button class="quick-btn" onclick="sendWithCode('Ameliore ce script avec les best practices NT8')">Ameliorer</button>
+      <button class="quick-btn" onclick="sendWithCode('Ajoute des alertes sonores et un panel info a ce script')">Ajouter alertes</button>
+      <button class="quick-btn" onclick="sendWithCode('Explique-moi ce que fait ce script ligne par ligne')">Expliquer</button>
+    </div>
+  </div>
+  <div class="input-info">NQ Futures | NT8 v8.1.6.3 | 22 patterns | 12 checks audit | 7 scripts reference | 📎 = coller un script</div>
+</div>
+
+<script>
+// ── State ──
+let conversationHistory = [];
+let isGenerating = false;
+let currentCode = null;
+let currentCodeName = null;
+
+const chatArea = document.getElementById('chat-area');
+const input = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+
+// ── Auto-resize textarea ──
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function quickSend(text) {
+  input.value = text;
+  sendMessage();
+}
+
+// ── Code paste ──
+function toggleCodePaste() {
+  const area = document.getElementById('code-paste-area');
+  const btn = document.getElementById('attach-btn');
+  if (area.style.display === 'none') {
+    area.style.display = 'block';
+    btn.classList.add('active');
+    document.getElementById('paste-code').focus();
+  } else {
+    area.style.display = 'none';
+    btn.classList.remove('active');
+  }
+}
+
+function sendWithCode(instruction) {
+  const code = document.getElementById('paste-code').value.trim();
+  if (!code) { alert('Collez votre code C# dans la zone ci-dessus'); return; }
+  input.value = instruction + '\n\nVoici le code:\n```csharp\n' + code + '\n```';
+  document.getElementById('code-paste-area').style.display = 'none';
+  document.getElementById('attach-btn').classList.remove('active');
+  document.getElementById('paste-code').value = '';
+  sendMessage();
+}
+
+// ── Categories ──
+const EXAMPLES = {
+  indicators: [
+    { title: 'RSI + Fleches Achat/Vente', detail: 'RSI 14 avec fleches vertes/rouges aux zones 30/70, panel info, alertes', tags: ['RSI','Fleches','Alertes'], prompt: 'Un indicateur RSI 14 periodes avec fleches vertes quand RSI croise au-dessus de 30 (achat) et fleches rouges quand RSI croise en-dessous de 70 (vente). Avec panel info TopRight et alertes sonores. Pour NQ 512 ticks.' },
+    { title: 'MACD + Volume', detail: 'Croisement MACD avec confirmation volume au-dessus de la moyenne', tags: ['MACD','Volume','Confirmation'], prompt: 'Un indicateur qui combine MACD crossover avec confirmation par volume eleve (au-dessus de la SMA 20 du volume). Afficher fleches seulement quand les 2 conditions sont reunies. NQ 512 ticks avec alertes.' },
+    { title: 'EMA Multi-Timeframe', detail: '3 EMA (9, 21, 50) avec zones colorees entre elles', tags: ['EMA','MTF','Zones'], prompt: 'Un indicateur avec 3 EMA (9, 21, 50 periodes). Dessiner des zones vertes entre EMA9 et EMA21 quand tendance haussiere, zones rouges quand baissiere. Signal quand les 3 EMA sont alignees.' },
+    { title: 'Bollinger + RSI Divergence', detail: 'Detecte quand le prix touche les Bollinger avec divergence RSI', tags: ['Bollinger','RSI','Divergence'], prompt: 'Un indicateur qui detecte quand le prix touche la bande superieure de Bollinger mais le RSI est en divergence baissiere (ou inversement en bas). Fleches et alertes aux points de divergence. NQ 512 ticks.' }
+  ],
+  strategies: [
+    { title: 'EMA Crossover Automatique', detail: 'EMA 9/21 crossover avec stop loss ATR et take profit 2:1', tags: ['EMA','Auto','Stop/TP'], prompt: 'Une strategie automatique EMA crossover (9 et 21 periodes). EnterLong quand EMA9 croise au-dessus EMA21, EnterShort inversement. Stop loss a 2x ATR(14), take profit ratio 2:1. Max 1 position. NQ 512 ticks.' },
+    { title: 'RSI Mean Reversion', detail: 'Achete en survente RSI, vend en surachat avec trailing stop', tags: ['RSI','Reversion','Trailing'], prompt: 'Une strategie mean reversion RSI. Acheter quand RSI < 25 et vendre quand RSI > 75. Trailing stop de 20 ticks. Take profit 40 ticks. Maximum 1 trade a la fois. Filtre horaire 9h30-16h EST.' },
+    { title: 'Breakout + Volume', detail: 'Entre sur breakout du high/low du jour avec confirmation volume', tags: ['Breakout','Volume','DayHL'], prompt: 'Une strategie breakout qui entre long quand le prix casse le high de la session precedente avec volume > 150% de la moyenne. Stop loss sous le point de breakout. Take profit 2:1. NQ 512 ticks.' }
+  ],
+  signals: [
+    { title: 'Alertes Multi-Niveaux', detail: 'Alertes differentes selon la force du signal (faible/moyen/fort)', tags: ['Alertes','Niveaux','Sons'], prompt: 'Un indicateur avec 3 niveaux d alertes: Faible (RSI entre 35-40 ou 60-65, son doux), Moyen (RSI entre 25-35 ou 65-75, son moyen), Fort (RSI < 25 ou > 75, son fort + fleche). Couleurs differentes par niveau.' },
+    { title: 'Zone de Support/Resistance', detail: 'Dessine des rectangles colores aux zones S/R avec alertes quand le prix approche', tags: ['S/R','Zones','Rectangles'], prompt: 'Un indicateur qui detecte les zones de support et resistance basees sur les pivots (Swing High/Low). Dessiner des rectangles colores aux zones. Alerte quand le prix entre dans une zone. NQ 512 ticks.' },
+    { title: 'Dashboard Multi-Indicateurs', detail: 'Panel avec RSI, MACD, EMA, Volume, tout en un seul panel', tags: ['Dashboard','Panel','Multi'], prompt: 'Un indicateur dashboard qui affiche dans un grand panel TopRight: RSI(14), MACD signal, direction EMA(9/21/50), volume relatif, et un score global BUY/SELL/NEUTRAL. Couleurs vert/rouge/jaune. NQ 512 ticks.' }
+  ],
+  existing: [
+    { title: 'Voir tous les scripts', detail: 'Liste les 7 scripts NinjaTrader 8 disponibles', tags: ['Liste','Catalogue'], prompt: 'Montre-moi la liste de tous les scripts NinjaTrader 8 existants avec leurs descriptions.' },
+    { title: 'Modifier un script existant', detail: 'Charger un script et demander des modifications', tags: ['Modifier','Ameliorer'], prompt: 'Montre-moi le script RSIDivergenceVolume_v2 pour que je puisse te demander des modifications.' },
+    { title: 'Auditer mes scripts', detail: 'Passer un script existant dans le pipeline de validation', tags: ['Audit','Test'], prompt: 'Audite le script HarmonicPatternIndicator_v1 et dis-moi s il y a des erreurs ou ameliorations.' }
+  ]
+};
+
+function showCategory(cat) {
+  const examples = EXAMPLES[cat];
+  if (!examples) return;
+  const titles = { indicators: '📊 Indicateurs', strategies: '🤖 Strategies', signals: '🔔 Alertes & Signaux', existing: '📂 Scripts Existants' };
+
+  let html = `<strong>${titles[cat]}</strong><br>Choisissez un exemple ou personnalisez:<div class="example-list">`;
+  examples.forEach((ex, i) => {
+    html += `<div class="example-card" onclick="showModifier(${JSON.stringify(cat)}, ${i})">
+      <div class="example-num">${i + 1}</div>
+      <div class="example-content">
+        <div class="example-title">${ex.title}</div>
+        <div class="example-detail">${ex.detail}</div>
+        <div class="example-tags">${ex.tags.map(t => `<span class="example-tag">${t}</span>`).join('')}</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  html += '<button class="quick-btn" onclick="showWelcome()" style="margin-top:4px">← Retour</button>';
+
+  addMessage('bot', html);
+}
+
+function showModifier(cat, idx) {
+  const ex = EXAMPLES[cat][idx];
+  let html = `<strong>${ex.title}</strong><br><br>`;
+  html += `<div class="modifier-panel">`;
+  html += `<h4>Personnaliser avant de generer:</h4>`;
+  html += `<div class="mod-row"><span class="mod-label">Instrument</span><select class="mod-select" id="mod-instrument"><option>NQ</option><option>ES</option><option>CL</option><option>YM</option><option>GC</option></select></div>`;
+  html += `<div class="mod-row"><span class="mod-label">Timeframe</span><select class="mod-select" id="mod-timeframe"><option>512 ticks</option><option>256 ticks</option><option>1000 ticks</option><option>1 min</option><option>5 min</option><option>15 min</option></select></div>`;
+  html += `<div class="mod-row"><span class="mod-label">Details</span><input class="mod-input" id="mod-details" value="" placeholder="Ajoutez vos details ici..."></div>`;
+  html += `<button class="mod-btn" onclick="generateFromModifier('${cat}', ${idx})">Generer ce script</button>`;
+  html += `</div>`;
+  html += `<div style="font-size:.7rem;color:var(--muted);margin-top:4px"><strong>Description:</strong> ${ex.detail}</div>`;
+
+  addMessage('bot', html);
+}
+
+function generateFromModifier(cat, idx) {
+  const ex = EXAMPLES[cat][idx];
+  const instrument = document.getElementById('mod-instrument')?.value || 'NQ';
+  const timeframe = document.getElementById('mod-timeframe')?.value || '512 ticks';
+  const details = document.getElementById('mod-details')?.value || '';
+
+  let prompt = ex.prompt.replace(/NQ/g, instrument).replace(/512 ticks/g, timeframe);
+  if (details) prompt += ' ' + details;
+
+  input.value = prompt;
+  sendMessage();
+}
+
+function showWelcome() {
+  // Re-show categories
+  let html = `Choisissez une categorie:<div class="cat-grid">
+    <div class="cat-card" onclick="showCategory('indicators')"><div class="cat-icon">📊</div><div class="cat-title">Indicateurs</div><div class="cat-desc">RSI, MACD, EMA, Bollinger, Volume</div></div>
+    <div class="cat-card" onclick="showCategory('strategies')"><div class="cat-icon">🤖</div><div class="cat-title">Strategies Auto</div><div class="cat-desc">Entrees/sorties, stop loss, take profit</div></div>
+    <div class="cat-card" onclick="showCategory('signals')"><div class="cat-icon">🔔</div><div class="cat-title">Alertes & Signaux</div><div class="cat-desc">Fleches, sons, zones colorees</div></div>
+    <div class="cat-card" onclick="showCategory('existing')"><div class="cat-icon">📂</div><div class="cat-title">Scripts Existants</div><div class="cat-desc">Voir, modifier, ameliorer</div></div>
+  </div>`;
+  addMessage('bot', html);
+}
+
+// ── Pipeline stages ──
+function resetPipeline() {
+  ['context','generation','audit','test','delivery'].forEach(s => {
+    const el = document.getElementById('step-' + s);
+    el.className = 'pipe-step';
+  });
+}
+
+function updateStage(stage, status) {
+  const el = document.getElementById('step-' + stage);
+  if (!el) return;
+  el.className = 'pipe-step';
+  if (status === 'start') el.classList.add('active');
+  else if (status === 'done') { el.classList.add('done'); el.querySelector('.pipe-circle').textContent = '\u2713'; }
+  else if (status === 'error') { el.classList.add('error'); el.querySelector('.pipe-circle').textContent = '\u2717'; }
+}
+
+// ── Messages ──
+function addMessage(role, content) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `
+    <div class="msg-avatar">${role === 'bot' ? 'AI' : 'Moi'}</div>
+    <div class="msg-bubble">${content}</div>
+  `;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return div;
+}
+
+function addTypingIndicator() {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.id = 'typing';
+  div.innerHTML = `
+    <div class="msg-avatar">AI</div>
+    <div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>
+  `;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return div;
+}
+
+function createBotStream() {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.innerHTML = `
+    <div class="msg-avatar">AI</div>
+    <div class="msg-bubble" id="stream-bubble"></div>
+  `;
+  chatArea.appendChild(div);
+  return document.getElementById('stream-bubble');
+}
+
+// ── Syntax highlighting ──
+function highlightCS(code) {
+  let h = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Comments first
+  h = h.replace(/(\/\/[^\n]*)/g, '<span class="hl-comment">$1</span>');
+  // Strings
+  h = h.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="hl-str">$1</span>');
+  // Attributes
+  h = h.replace(/(\[[\w.]+(?:\([^)]*\))?\])/g, '<span class="hl-attr">$1</span>');
+  // Numbers
+  h = h.replace(/\b(\d+\.?\d*[fFdD]?)\b/g, '<span class="hl-num">$1</span>');
+  // Keywords
+  const kw = ['using','namespace','public','private','protected','class','override','void','if','else','return','new','this','true','false','int','double','bool','string','float','var','get','set','enum','static','readonly','const','abstract','virtual','sealed','partial','base','null','typeof','is','as'];
+  h = h.replace(new RegExp('\\b(' + kw.join('|') + ')\\b', 'g'), '<span class="hl-kw">$1</span>');
+  // Types
+  const types = ['Indicator','Strategy','Brush','Brushes','Series','State','Calculate','TextPosition','Priority','MarketPosition','RSI','MACD','SMA','EMA','ATR','Swing','SimpleFont','NinjaScriptProperty','Display','Range','XmlIgnore'];
+  h = h.replace(new RegExp('\\b(' + types.join('|') + ')\\b', 'g'), '<span class="hl-type">$1</span>');
+  return h;
+}
+
+function renderCodeBlock(code, name) {
+  return `<div class="code-block">
+    <div class="code-header"><span>C# NinjaScript — ${escapeHtml(name || 'Script')}</span></div>
+    <pre><code>${highlightCS(code)}</code></pre>
+    <div class="code-actions">
+      <button class="code-btn" onclick="copyCode(this)">Copier</button>
+      <button class="code-btn" onclick="downloadCS()">Telecharger .cs</button>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Copy / Download ──
+function copyCode(btn) {
+  if (!currentCode) return;
+  navigator.clipboard.writeText(currentCode).then(() => {
+    btn.textContent = 'Copie!';
+    setTimeout(() => btn.textContent = 'Copier', 2000);
+  });
+}
+
+function downloadCS() {
+  if (!currentCode) return;
+  const blob = new Blob([currentCode], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (currentCodeName || 'Script') + '.cs';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Send message ──
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text || isGenerating) return;
+
+  isGenerating = true;
+  sendBtn.disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+  currentCode = null;
+  currentCodeName = null;
+
+  addMessage('user', escapeHtml(text));
+  conversationHistory.push({ role: 'user', content: text });
+  resetPipeline();
+
+  const typing = addTypingIndicator();
+  let streamBubble = null;
+  let fullText = '';
+
+  try {
+    const response = await fetch('/api/nt8/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        conversation_history: conversationHistory.slice(-6)
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Erreur serveur' }));
+      throw new Error(err.error || 'Erreur ' + response.status);
+    }
+
+    // Remove typing, create stream bubble
+    typing.remove();
+    streamBubble = createBotStream();
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          var evtType = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && evtType) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            handleEvent(evtType, data, streamBubble);
+            if (evtType === 'token') fullText += data.text;
+          } catch(e) {}
+          evtType = null;
+        }
+      }
+    }
+
+    // Final render with code blocks
+    finalRender(streamBubble, fullText);
+    conversationHistory.push({ role: 'assistant', content: fullText });
+
+  } catch (err) {
+    typing.remove();
+    addMessage('bot', '<span style="color:var(--red)">Erreur: ' + escapeHtml(err.message) + '</span>');
+  }
+
+  isGenerating = false;
+  sendBtn.disabled = false;
+  input.focus();
+}
+
+function handleEvent(type, data, bubble) {
+  switch(type) {
+    case 'stage':
+      updateStage(data.stage, data.status);
+      break;
+    case 'token':
+      // Append text progressively (plain text for now, rendered at end)
+      if (bubble) {
+        bubble.textContent += data.text;
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }
+      break;
+    case 'code':
+      currentCode = data.code;
+      currentCodeName = data.name;
+      break;
+    case 'pipeline':
+      // Will render after stream ends
+      break;
+    case 'file':
+      currentCodeName = data.name;
+      break;
+    case 'error':
+      if (bubble) {
+        bubble.innerHTML += '<br><span style="color:var(--red)">' + escapeHtml(data.message) + '</span>';
+      }
+      break;
+  }
+}
+
+function finalRender(bubble, text) {
+  if (!bubble) return;
+
+  // Parse markdown-ish content
+  let html = escapeHtml(text);
+
+  // Replace code blocks with highlighted versions
+  if (currentCode) {
+    // Remove the raw code block from the text display
+    const codeBlockRegex = /```csharp\n[\s\S]*?```/g;
+    html = html.replace(codeBlockRegex, '___CODE_BLOCK___');
+
+    // Convert line breaks
+    html = html.replace(/\n/g, '<br>');
+
+    // Bold
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Insert code block
+    html = html.replace('___CODE_BLOCK___', renderCodeBlock(currentCode, currentCodeName));
+  } else {
+    html = html.replace(/\n/g, '<br>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  // Add pipeline status if we had code
+  if (currentCode) {
+    const audit = document.getElementById('step-audit');
+    const test = document.getElementById('step-test');
+    const delivery = document.getElementById('step-delivery');
+    const auditOk = audit && audit.classList.contains('done');
+    const testOk = test && test.classList.contains('done');
+    const deliveryOk = delivery && delivery.classList.contains('done');
+
+    let status = 'PASS';
+    let badge = 'badge-pass';
+    if (!deliveryOk) { status = 'WARN'; badge = 'badge-warn'; }
+    if (!testOk || !auditOk) { status = 'FAIL'; badge = 'badge-fail'; }
+
+    html += `<div class="pipe-report">
+      <strong>Pipeline:</strong> <span class="badge ${badge}">${status}</span><br>
+      ${auditOk ? '\u2713' : '\u2717'} Audit 12 checks &nbsp;
+      ${testOk ? '\u2713' : '\u2717'} Test compilation &nbsp;
+      ${deliveryOk ? '\u2713' : '\u2717'} Livraison
+    </div>`;
+
+    if (deliveryOk) {
+      html += `<div style="margin-top:8px;font-size:.8rem;color:var(--text2)">
+        <strong>Installation:</strong><br>
+        1. Telecharger le .cs ci-dessus<br>
+        2. Copier dans: Documents/NinjaTrader 8/bin/Custom/${currentCodeName && text.toLowerCase().includes('strat') ? 'Strategies' : 'Indicators'}/<br>
+        3. NinjaTrader: New &gt; NinjaScript Editor &gt; F5<br>
+        4. Appliquer sur chart NQ 512 ticks
+      </div>`;
+    }
+  }
+
+  bubble.innerHTML = html;
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// ── Focus input on load ──
+input.focus();
+</script>
+</body>
+</html>
