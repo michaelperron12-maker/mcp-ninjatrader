@@ -1,0 +1,139 @@
+{
+  "commonErrors": [
+    {
+      "id": "BRUSH_NO_SERIALIZE",
+      "severity": "ERROR",
+      "title": "Brush property without serialization wrapper",
+      "description": "Public Brush properties without [XmlIgnore] + Serializable companion cause NT8 crash on save/load",
+      "detection": "public Brush property without companion string *Serializable property",
+      "fix": "Add [XmlIgnore] to Brush property and create companion [Browsable(false)] string property using Serialize.BrushToString/StringToBrush",
+      "autoFixable": true
+    },
+    {
+      "id": "ONEACHTICK_NO_GUARD",
+      "severity": "WARNING",
+      "title": "OnEachTick without anti-doublon guard",
+      "description": "Calculate.OnEachTick fires OnBarUpdate multiple times per bar, causing duplicate signals",
+      "detection": "Calculate = Calculate.OnEachTick AND Draw.Arrow*/Alert without CurrentBar != lastBar check",
+      "fix": "Add lastSignalBar tracking: if (signal && CurrentBar != lastSignalBar) { draw; lastSignalBar = CurrentBar; }",
+      "autoFixable": false
+    },
+    {
+      "id": "SERIES_INIT_WRONG_STATE",
+      "severity": "ERROR",
+      "title": "Series<T> initialized outside DataLoaded",
+      "description": "Series<T> must be created in State.DataLoaded, not in SetDefaults or OnBarUpdate",
+      "detection": "new Series<T>(this) outside of State.DataLoaded block",
+      "fix": "Move Series initialization to if (State == State.DataLoaded) block",
+      "autoFixable": false
+    },
+    {
+      "id": "INDICATOR_IN_SETDEFAULTS",
+      "severity": "ERROR",
+      "title": "Indicator created in SetDefaults",
+      "description": "Indicators like RSI(), MACD(), EMA() must be created in DataLoaded, not SetDefaults",
+      "detection": "RSI()/MACD()/EMA()/etc. call inside SetDefaults block",
+      "fix": "Move indicator creation to State.DataLoaded",
+      "autoFixable": false
+    },
+    {
+      "id": "MISSING_BIP_CHECK",
+      "severity": "ERROR",
+      "title": "Missing BarsInProgress check with multi-timeframe",
+      "description": "When using AddDataSeries(), OnBarUpdate fires for each series. Must filter with BarsInProgress",
+      "detection": "AddDataSeries() present but no BarsInProgress check in OnBarUpdate",
+      "fix": "Add 'if (BarsInProgress != 0) return;' at start of OnBarUpdate",
+      "autoFixable": true
+    },
+    {
+      "id": "MISSING_CURRENTBARS_CHECK",
+      "severity": "WARNING",
+      "title": "Missing CurrentBars minimum bars check",
+      "description": "Secondary data series may not have enough bars loaded",
+      "detection": "AddDataSeries() present but no CurrentBars[N] check",
+      "fix": "Add 'if (CurrentBars[N] < minBars) return;' for each secondary series",
+      "autoFixable": true
+    },
+    {
+      "id": "STATIC_DRAW_TAG",
+      "severity": "ERROR",
+      "title": "Static draw tag causes overwrite",
+      "description": "Draw methods with static tags overwrite previous drawings",
+      "detection": "Draw.ArrowUp/Down/Text with hardcoded string tag not containing CurrentBar or counter",
+      "fix": "Append CurrentBar to tag: \"signal\" + CurrentBar",
+      "autoFixable": true
+    },
+    {
+      "id": "ALERT_NO_REALTIME_CHECK",
+      "severity": "WARNING",
+      "title": "Alert without State.Realtime check",
+      "description": "Alerts fire during historical processing (backtest), causing spam",
+      "detection": "Alert() call without State == State.Realtime guard",
+      "fix": "Wrap alert in: if (State == State.Realtime)",
+      "autoFixable": true
+    },
+    {
+      "id": "DEPRECATED_DRAW",
+      "severity": "WARNING",
+      "title": "Deprecated Draw method",
+      "description": "Old-style DrawArrowUp/DrawText methods are deprecated",
+      "detection": "DrawArrowUp, DrawArrowDown, DrawText, DrawLine, DrawRectangle calls",
+      "fix": "Replace with Draw.ArrowUp, Draw.ArrowDown, Draw.Text, Draw.Line, Draw.Rectangle",
+      "autoFixable": true
+    },
+    {
+      "id": "NO_ONSTATECHANGE",
+      "severity": "ERROR",
+      "title": "Missing OnStateChange method",
+      "description": "Every NT8 script must override OnStateChange",
+      "detection": "No 'protected override void OnStateChange' found",
+      "fix": "Add OnStateChange with SetDefaults, Configure, DataLoaded blocks",
+      "autoFixable": false
+    },
+    {
+      "id": "NO_ONBARUPDATE",
+      "severity": "ERROR",
+      "title": "Missing OnBarUpdate method",
+      "description": "Every NT8 script must override OnBarUpdate",
+      "detection": "No 'protected override void OnBarUpdate' found",
+      "fix": "Add OnBarUpdate method with core logic",
+      "autoFixable": false
+    },
+    {
+      "id": "UNBOUNDED_COLLECTION",
+      "severity": "WARNING",
+      "title": "Unbounded List/collection growth",
+      "description": "List<T> that grows without limit causes memory issues on long charts",
+      "detection": "List.Add() without corresponding RemoveAt(0) or count check",
+      "fix": "Add FIFO rotation: if (list.Count > MAX) list.RemoveAt(0)",
+      "autoFixable": false
+    },
+    {
+      "id": "PANEL_AFTER_RETURN",
+      "severity": "INFO",
+      "title": "Info panel may not always display",
+      "description": "ShowInfo/TextFixed called after conditional returns means panel disappears",
+      "detection": "Draw.TextFixed in OnBarUpdate after return statements",
+      "fix": "Move panel rendering before any conditional returns, or call unconditionally at end",
+      "autoFixable": false
+    },
+    {
+      "id": "STRATEGY_MISMATCHED_SIGNAL",
+      "severity": "ERROR",
+      "title": "Mismatched signal names in strategy",
+      "description": "SetStopLoss and EnterLong/Short must use the same signal name string",
+      "detection": "SetStopLoss('X') where 'X' doesn't match any EnterLong/Short signal name",
+      "fix": "Use consistent signal name strings across all order methods",
+      "autoFixable": false
+    },
+    {
+      "id": "WRONG_NAMESPACE",
+      "severity": "ERROR",
+      "title": "Wrong namespace for script type",
+      "description": "Indicator in Strategies namespace or Strategy in Indicators namespace",
+      "detection": "Class inherits Indicator but namespace is Strategies, or vice versa",
+      "fix": "Move to correct namespace",
+      "autoFixable": true
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+#region Using declarations
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Windows.Media;
+using System.Xml.Serialization;
+using NinjaTrader.Cbi;
+using NinjaTrader.Data;
+using NinjaTrader.Gui;
+using NinjaTrader.Gui.Chart;
+using NinjaTrader.Gui.NinjaScript;
+using NinjaTrader.Gui.Tools;
+using NinjaTrader.NinjaScript;
+using NinjaTrader.NinjaScript.DrawingTools;
+using NinjaTrader.NinjaScript.Indicators;
+using NinjaTrader.Core.FloatingPoint;
+#endregion
+
+namespace NinjaTrader.NinjaScript.Strategies
+{
+    public class {{CLASS_NAME}} : Strategy
+    {
+        #region Private Variables
+        // Indicators
+        {{INDICATOR_DECLARATIONS}}
+
+        // Position tracking
+        private double entryPrice = 0;
+        private double initialStop = 0;
+        private bool breakEvenMoved = false;
+        #endregion
+
+        protected override void OnStateChange()
+        {
+            if (State == State.SetDefaults)
+            {
+                Description = "{{DESCRIPTION}}";
+                Name = "{{CLASS_NAME}}";
+                Calculate = Calculate.OnBarClose;
+                EntriesPerDirection = 1;
+                EntryHandling = EntryHandling.AllEntries;
+                IsExitOnSessionCloseStrategy = true;
+                ExitOnSessionCloseSeconds = 30;
+                BarsRequiredToTrade = 50;
+                StartBehavior = StartBehavior.WaitUntilFlat;
+                MaximumBarsLookBack = MaximumBarsLookBack.TwoHundredFiftySix;
+
+                // Default parameter values
+                {{DEFAULT_VALUES}}
+            }
+            else if (State == State.Configure)
+            {
+                {{CONFIGURE_BLOCK}}
+            }
+            else if (State == State.DataLoaded)
+            {
+                {{DATALOADED_BLOCK}}
+            }
+        }
+
+        protected override void OnBarUpdate()
+        {
+            {{BARUPDATE_GUARDS}}
+
+            if (CurrentBar < BarsRequiredToTrade)
+                return;
+
+            {{CORE_LOGIC}}
+        }
+
+        protected override void OnExecutionUpdate(Execution execution,
+            string executionId, double price, int quantity,
+            MarketPosition marketPosition, string orderId, DateTime time)
+        {
+            if (Position.MarketPosition == MarketPosition.Flat)
+            {
+                entryPrice = 0;
+                initialStop = 0;
+                breakEvenMoved = false;
+            }
+        }
+
+        #region Properties
+        {{PROPERTIES}}
+        #endregion
+    }
+}

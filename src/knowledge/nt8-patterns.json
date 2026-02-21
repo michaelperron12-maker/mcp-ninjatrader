@@ -1,0 +1,330 @@
+{
+  "patterns": [
+    {
+      "id": 1,
+      "name": "Namespace & Using Structure",
+      "category": "structure",
+      "description": "Standard using declarations and namespace for NT8 scripts",
+      "template": "#region Using declarations\nusing System;\nusing System.Collections.Generic;\nusing System.ComponentModel;\nusing System.ComponentModel.DataAnnotations;\nusing System.Linq;\nusing System.Windows.Media;\nusing System.Xml.Serialization;\nusing NinjaTrader.Cbi;\nusing NinjaTrader.Data;\nusing NinjaTrader.Gui;\nusing NinjaTrader.Gui.Chart;\nusing NinjaTrader.Gui.NinjaScript;\nusing NinjaTrader.Gui.Tools;\nusing NinjaTrader.NinjaScript;\nusing NinjaTrader.NinjaScript.DrawingTools;\nusing NinjaTrader.NinjaScript.Indicators;\nusing NinjaTrader.Core.FloatingPoint;\n#endregion",
+      "rules": [
+        "Indicators namespace: NinjaTrader.NinjaScript.Indicators",
+        "Strategies namespace: NinjaTrader.NinjaScript.Strategies",
+        "Always wrap usings in #region Using declarations / #endregion",
+        "Include System.Xml.Serialization if using Brush properties",
+        "Include System.Collections.Generic if using List<T>"
+      ],
+      "critical": true
+    },
+    {
+      "id": 2,
+      "name": "Class Inheritance",
+      "category": "structure",
+      "description": "Indicator inherits from Indicator, Strategy from Strategy",
+      "template": "public class MyIndicator : Indicator\n{\n    // implementation\n}\n\npublic class MyStrategy : Strategy\n{\n    // implementation\n}",
+      "rules": [
+        "Indicators inherit from Indicator class",
+        "Strategies inherit from Strategy class",
+        "One class per file",
+        "Class name must match filename"
+      ],
+      "critical": true
+    },
+    {
+      "id": 3,
+      "name": "Property Declarations",
+      "category": "properties",
+      "description": "User-facing parameters with NinjaScriptProperty, Range, Display attributes",
+      "template": "[NinjaScriptProperty]\n[Range(1, int.MaxValue)]\n[Display(Name = \"Period\", Order = 1, GroupName = \"1. Parameters\")]\npublic int Period { get; set; }",
+      "rules": [
+        "Every configurable property needs [NinjaScriptProperty]",
+        "[Display] with Name, Order, GroupName for UI organization",
+        "[Range(min, max)] for numeric types (int, double)",
+        "No [Range] for bool or string types",
+        "GroupName prefix with number for ordering: '1. RSI', '2. Signals'",
+        "Use { get; set; } auto-properties"
+      ],
+      "critical": true
+    },
+    {
+      "id": 4,
+      "name": "Brush Serialization",
+      "category": "properties",
+      "description": "CRITICAL: Brush properties must have XmlIgnore + Serializable companion to prevent NT8 crash",
+      "template": "[XmlIgnore]\n[Display(Name = \"Bull Color\", Order = 1, GroupName = \"Colors\")]\npublic Brush BullColor { get; set; }\n\n[Browsable(false)]\npublic string BullColorSerializable\n{\n    get { return Serialize.BrushToString(BullColor); }\n    set { BullColor = Serialize.StringToBrush(value); }\n}",
+      "rules": [
+        "Every public Brush property needs [XmlIgnore]",
+        "Must have companion string property with Serializable suffix",
+        "Companion uses Serialize.BrushToString() and StringToBrush()",
+        "Companion has [Browsable(false)] to hide from UI",
+        "Missing this pattern causes NT8 serialization crash on save/load",
+        "Using Brushes.Lime directly in code (not as property) is fine"
+      ],
+      "critical": true
+    },
+    {
+      "id": 5,
+      "name": "OnStateChange Lifecycle",
+      "category": "lifecycle",
+      "description": "Three mandatory phases: SetDefaults, Configure, DataLoaded",
+      "template": "protected override void OnStateChange()\n{\n    if (State == State.SetDefaults)\n    {\n        Description = \"Description\";\n        Name = \"ScriptName\";\n        Calculate = Calculate.OnBarClose;\n        IsOverlay = true;\n        BarsRequiredToPlot = 20;\n        // Default values\n    }\n    else if (State == State.Configure)\n    {\n        // AddDataSeries() for MTF\n    }\n    else if (State == State.DataLoaded)\n    {\n        // Initialize indicators and Series<T>\n    }\n}",
+      "rules": [
+        "SetDefaults: Name, Description, Calculate mode, IsOverlay, default param values, Brush defaults",
+        "Configure: AddDataSeries() calls for multi-timeframe",
+        "DataLoaded: ALL indicator instantiation (RSI(), MACD(), etc.) and Series<T> creation",
+        "Order: SetDefaults -> Configure -> DataLoaded (never reversed)",
+        "Never create indicators in SetDefaults or OnBarUpdate"
+      ],
+      "critical": true
+    },
+    {
+      "id": 6,
+      "name": "OnBarUpdate Structure",
+      "category": "lifecycle",
+      "description": "Main logic method called on each bar/tick",
+      "template": "protected override void OnBarUpdate()\n{\n    if (BarsInProgress != 0) return;\n    if (CurrentBar < BarsRequiredToPlot) return;\n    \n    // Core logic\n    bool bullSignal = DetectBull();\n    bool bearSignal = DetectBear();\n    \n    // Draw signals\n    if (bullSignal)\n        Draw.ArrowUp(this, \"buy\" + CurrentBar, true, 0, Low[0] - 4 * TickSize, Brushes.Lime);\n    \n    // Always show panel\n    ShowInfo();\n}",
+      "rules": [
+        "First: BarsInProgress check if MTF (return if != 0)",
+        "Second: minimum bars check (CurrentBar < N)",
+        "Middle: core logic and signal detection",
+        "Last: ALWAYS show info panel (before any return statements or unconditionally at end)",
+        "Use early returns to filter, avoid deep nesting"
+      ],
+      "critical": true
+    },
+    {
+      "id": 7,
+      "name": "Panel Rendering",
+      "category": "display",
+      "description": "Info panel always visible on chart using Draw.TextFixed",
+      "template": "private void ShowInfo()\n{\n    string info = string.Format(\n        \"=== Script Name ===\\n\" +\n        \"RSI: {0:F1}\\n\" +\n        \"Signals: {1} Buy | {2} Sell\",\n        rsi[0], buyCount, sellCount);\n    \n    Draw.TextFixed(this, \"infoPanel\", info, TextPosition.TopRight,\n        Brushes.White, new SimpleFont(\"Consolas\", 11),\n        Brushes.Black, Brushes.Black, 80);\n}",
+      "rules": [
+        "Use consistent unique tag (e.g. 'infoPanel')",
+        "TextPosition: TopRight, TopLeft, BottomRight, BottomLeft, Center",
+        "Font: Consolas size 11 for readability",
+        "Colors: White text, Black background, 80 opacity",
+        "MUST be called every bar (not conditionally)",
+        "Call AFTER signal detection but BEFORE filter returns"
+      ],
+      "critical": false
+    },
+    {
+      "id": 8,
+      "name": "Multi-Timeframe Setup",
+      "category": "data",
+      "description": "Adding secondary data series for multi-timeframe analysis",
+      "template": "// In Configure:\nAddDataSeries(BarsPeriodType.Minute, 5);   // BarsInProgress=1\nAddDataSeries(BarsPeriodType.Minute, 15);  // BarsInProgress=2\n\n// In DataLoaded:\nema5 = EMA(BarsArray[1], EmaPeriod);\nema15 = EMA(BarsArray[2], EmaPeriod);\n\n// In OnBarUpdate:\nif (BarsInProgress != 0) return;\nif (CurrentBars[1] < 50) return;",
+      "rules": [
+        "AddDataSeries() in Configure only",
+        "BarsInProgress 0 = primary, 1 = first secondary, etc.",
+        "Indicators on secondary: use BarsArray[N] as input",
+        "Access secondary prices: Closes[N][0], Highs[N][0], Volumes[N][0]",
+        "ALWAYS check CurrentBars[N] for minimum bars on each series",
+        "Process primary only: if (BarsInProgress != 0) return;"
+      ],
+      "critical": true
+    },
+    {
+      "id": 9,
+      "name": "Signal Drawing",
+      "category": "display",
+      "description": "Drawing arrows, text, lines for buy/sell signals",
+      "template": "// Buy arrow below bar\nDraw.ArrowUp(this, \"buy\" + CurrentBar, true, 0, Low[0] - 4 * TickSize, Brushes.Lime);\n\n// Sell arrow above bar\nDraw.ArrowDown(this, \"sell\" + CurrentBar, true, 0, High[0] + 4 * TickSize, Brushes.Red);\n\n// Text label\nDraw.Text(this, \"lbl\" + CurrentBar, \"LONG\", 0, Low[0] - 10 * TickSize, Brushes.Lime);\n\n// Horizontal line\nDraw.Line(this, \"sl\" + CurrentBar, false, 1, price, -5, price, Brushes.OrangeRed, DashStyleHelper.Dash, 1);",
+      "rules": [
+        "Tags MUST be unique per signal: use CurrentBar or incrementing counter",
+        "Arrow offset: 4 * TickSize below Low (buy) or above High (sell)",
+        "isAutoScale=true for arrows, false for lines",
+        "Use Brushes.Lime for bullish, Brushes.Red for bearish",
+        "Draw.TextFixed for panels, Draw.Text for per-bar labels"
+      ],
+      "critical": false
+    },
+    {
+      "id": 10,
+      "name": "Alert Pattern",
+      "category": "signals",
+      "description": "Sound and visual alerts on signals",
+      "template": "if (EnableAlerts && State == State.Realtime)\n    Alert(\"alert\" + CurrentBar, Priority.High,\n        \"SIGNAL ACHAT - RSI Divergence\",\n        NinjaTrader.Core.Globals.InstallDir + @\"\\sounds\\Alert1.wav\",\n        10, Brushes.DarkGreen, Brushes.White);",
+      "rules": [
+        "ALWAYS check State == State.Realtime (no alerts during backtest)",
+        "Check EnableAlerts bool parameter",
+        "Unique tag per alert instance",
+        "Priority: High, Medium, Low",
+        "Sound: use NinjaTrader.Core.Globals.InstallDir path or simple filename",
+        "Duration: seconds the alert popup stays visible"
+      ],
+      "critical": false
+    },
+    {
+      "id": 11,
+      "name": "Anti-Doublon Pattern",
+      "category": "safety",
+      "description": "Prevent duplicate signals on OnEachTick",
+      "template": "private int lastBullBar = -1;\nprivate int lastBearBar = -1;\n\n// In OnBarUpdate:\nif (bullSignal && CurrentBar != lastBullBar)\n{\n    Draw.ArrowUp(...);\n    lastBullBar = CurrentBar;\n}\nif (bearSignal && CurrentBar != lastBearBar)\n{\n    Draw.ArrowDown(...);\n    lastBearBar = CurrentBar;\n}",
+      "rules": [
+        "Required when Calculate = Calculate.OnEachTick",
+        "Track last signal bar with private int variable",
+        "Check CurrentBar != lastBar before drawing/alerting",
+        "One tracker per signal type (bull, bear, bounce, etc.)",
+        "Not needed with Calculate.OnBarClose",
+        "Alternative: use Calculate.OnBarClose for simplicity"
+      ],
+      "critical": true
+    },
+    {
+      "id": 12,
+      "name": "Auto-Calc Bounds",
+      "category": "data",
+      "description": "Dynamic calculation of parameters when user doesn't set them",
+      "template": "if (AutoCalcBounds && RectangleHigh <= 0)\n{\n    if (CurrentBar >= Lookback)\n    {\n        double hh = double.MinValue, ll = double.MaxValue;\n        for (int i = 0; i < Lookback; i++)\n        {\n            hh = Math.Max(hh, High[i]);\n            ll = Math.Min(ll, Low[i]);\n        }\n        double range = hh - ll;\n        RectangleHigh = hh - range * 0.10;\n        RectangleLow = ll + range * 0.10;\n    }\n}",
+      "rules": [
+        "Check if parameter is 0 or negative (not set)",
+        "Calculate once when enough bars available",
+        "Show 'waiting' message until ready",
+        "Return early if bounds not calculated yet"
+      ],
+      "critical": false
+    },
+    {
+      "id": 13,
+      "name": "Heikin-Ashi Calculation",
+      "category": "indicators",
+      "description": "Manual HA candle calculation for trend detection",
+      "template": "private Series<double> haOpen, haClose;\n\n// In DataLoaded:\nhaOpen = new Series<double>(this);\nhaClose = new Series<double>(this);\n\n// In OnBarUpdate:\nhaClose[0] = (Open[0] + High[0] + Low[0] + Close[0]) / 4.0;\nhaOpen[0] = CurrentBar == 0 ? (Open[0] + Close[0]) / 2.0 : (haOpen[1] + haClose[1]) / 2.0;\nbool haBull = haClose[0] > haOpen[0];\nbool haBear = haClose[0] < haOpen[0];",
+      "rules": [
+        "HA Close = (O+H+L+C) / 4",
+        "HA Open = avg of prev HA Open and HA Close",
+        "First bar: HA Open = (O+C) / 2",
+        "Use Series<double> initialized in DataLoaded",
+        "Bull = haClose > haOpen, Bear = haClose < haOpen"
+      ],
+      "critical": false
+    },
+    {
+      "id": 14,
+      "name": "Divergence Detection",
+      "category": "indicators",
+      "description": "RSI divergence using swing points",
+      "template": "int bar1 = swing.SwingLowBar(0, 1, Lookback);\nint bar2 = swing.SwingLowBar(0, 2, Lookback);\nif (bar1 < 0 || bar2 < 0 || bar2 <= bar1) return false;\n\ndouble price1 = Low[bar1], price2 = Low[bar2];\ndouble rsi1 = rsi[bar1], rsi2 = rsi[bar2];\n\nbool bullDiv = price1 < price2 && rsi1 > rsi2;  // lower low + higher RSI",
+      "rules": [
+        "Use Swing indicator for swing highs/lows",
+        "SwingLowBar(barsAgo, instance, lookback): instance 1=most recent, 2=second",
+        "Bullish div: price lower low + RSI higher low",
+        "Bearish div: price higher high + RSI lower high",
+        "Validate bar indices (not -1, bar2 > bar1)"
+      ],
+      "critical": false
+    },
+    {
+      "id": 15,
+      "name": "Strategy Entry/Exit",
+      "category": "strategy",
+      "description": "Automated trade execution with stops and targets",
+      "template": "if (bullSignal && Position.MarketPosition == MarketPosition.Flat)\n{\n    double atrVal = atr[0];\n    SetStopLoss(\"LongDiv\", CalculationMode.Ticks, (atrVal * StopMult) / TickSize, false);\n    SetProfitTarget(\"LongDiv\", CalculationMode.Ticks, (atrVal * TargetMult) / TickSize);\n    EnterLong(1, \"LongDiv\");\n}",
+      "rules": [
+        "Check Position.MarketPosition == Flat before entering",
+        "Signal names must match: SetStopLoss('X'), EnterLong(qty, 'X')",
+        "SetStopLoss before EnterLong",
+        "CalculationMode: Ticks, Price, Currency, Percent",
+        "Track entry price for break-even management"
+      ],
+      "critical": true
+    },
+    {
+      "id": 16,
+      "name": "Break-Even Management",
+      "category": "strategy",
+      "description": "Move stop to break-even after profit threshold",
+      "template": "if (!breakEvenMoved && Position.MarketPosition == MarketPosition.Long)\n{\n    double profit = Close[0] - entryPrice;\n    if (profit >= initialStopDistance)\n    {\n        SetStopLoss(\"LongDiv\", CalculationMode.Price, entryPrice + 2 * TickSize, false);\n        breakEvenMoved = true;\n    }\n}",
+      "rules": [
+        "Track breakEvenMoved bool flag",
+        "Move stop to entry + small buffer (2 ticks)",
+        "Reset in OnExecutionUpdate when position closes",
+        "Threshold: typically 1R (same distance as initial stop)"
+      ],
+      "critical": false
+    },
+    {
+      "id": 17,
+      "name": "FIFO Rotation",
+      "category": "safety",
+      "description": "Remove oldest items when collection exceeds max size",
+      "template": "private const int MAX_ITEMS = 20;\nprivate List<double[]> items = new List<double[]>();\n\n// Add new item\nitems.Add(new double[] { value1, value2 });\nif (items.Count > MAX_ITEMS)\n    items.RemoveAt(0);",
+      "rules": [
+        "Set a MAX constant for collection size",
+        "RemoveAt(0) to remove oldest (FIFO)",
+        "For draw objects: RemoveDrawObject() before removing from list",
+        "Prevents memory growth on long-running charts"
+      ],
+      "critical": false
+    },
+    {
+      "id": 18,
+      "name": "Series Operations",
+      "category": "data",
+      "description": "Custom data series for bar-by-bar calculations",
+      "template": "private Series<double> myData;\n\n// In DataLoaded:\nmyData = new Series<double>(this);\n\n// In OnBarUpdate:\nmyData[0] = someCalculation;\ndouble prev = myData[1];  // previous bar",
+      "rules": [
+        "ALWAYS initialize in State.DataLoaded, never SetDefaults",
+        "Pass 'this' as constructor argument",
+        "Access: [0]=current, [1]=1 bar ago, [N]=N bars ago",
+        "Available types: Series<double>, Series<bool>, Series<int>"
+      ],
+      "critical": true
+    },
+    {
+      "id": 19,
+      "name": "Time Filter",
+      "category": "filters",
+      "description": "Filter signals to trading session hours only",
+      "template": "private bool InSession()\n{\n    int t = ToTime(Time[0]);\n    return (t >= 93000 && t <= 113000) || (t >= 140000 && t <= 153000);\n}\n\n// In OnBarUpdate:\nif (UseTimeFilter && !InSession()) return;",
+      "rules": [
+        "Time format: HHMMSS as integer (93000 = 9:30 AM)",
+        "Use ToTime(Time[0]) to get current bar time",
+        "Common sessions: 9:30-11:30 AM, 2:00-3:30 PM EST",
+        "Make configurable with Session1Start/End parameters"
+      ],
+      "critical": false
+    },
+    {
+      "id": 20,
+      "name": "OnExecutionUpdate",
+      "category": "strategy",
+      "description": "Track position state changes for strategy management",
+      "template": "protected override void OnExecutionUpdate(Execution execution,\n    string executionId, double price, int quantity,\n    MarketPosition marketPosition, string orderId, DateTime time)\n{\n    if (Position.MarketPosition == MarketPosition.Flat)\n    {\n        entryPrice = 0;\n        breakEvenMoved = false;\n    }\n}",
+      "rules": [
+        "Reset state when position goes flat",
+        "Track entry price on fills",
+        "Update break-even flag"
+      ],
+      "critical": false
+    },
+    {
+      "id": 21,
+      "name": "Volume Spike Detection",
+      "category": "indicators",
+      "description": "Detect abnormal volume using SMA comparison",
+      "template": "private SMA volSMA;\n\n// In DataLoaded:\nvolSMA = SMA(Volume, VolPeriod);\n\n// In OnBarUpdate:\nbool volumeSpike = Volume[0] > volSMA[0] * VolumeMultiplier;",
+      "rules": [
+        "Compare current volume to SMA of volume",
+        "Typical multiplier: 1.5x to 2.0x",
+        "Volume period: 20 bars typical",
+        "Use as confirmation filter, not primary signal"
+      ],
+      "critical": false
+    },
+    {
+      "id": 22,
+      "name": "Signal Queue (MTF)",
+      "category": "advanced",
+      "description": "Queue signals from higher timeframes for processing on primary chart",
+      "template": "private struct QSig { public bool Bull; public string TF; public double Val; }\nprivate List<QSig> queue = new List<QSig>();\n\n// Queue from HTF:\nqueue.Add(new QSig { Bull = true, TF = \"5m\", Val = rsi[0] });\n\n// Process on primary:\nforeach (var sq in queue) DrawSignal(sq);\nqueue.Clear();",
+      "rules": [
+        "Queue signals in HTF processing (BarsInProgress > 0)",
+        "Process and draw in primary (BarsInProgress == 0)",
+        "Clear queue after processing",
+        "Used when HTF signals need to draw on primary chart"
+      ],
+      "critical": false
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+#region Using declarations
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Windows.Media;
+using System.Xml.Serialization;
+using NinjaTrader.Cbi;
+using NinjaTrader.Data;
+using NinjaTrader.Gui;
+using NinjaTrader.Gui.Chart;
+using NinjaTrader.Gui.NinjaScript;
+using NinjaTrader.Gui.Tools;
+using NinjaTrader.NinjaScript;
+using NinjaTrader.NinjaScript.DrawingTools;
+using NinjaTrader.NinjaScript.Indicators;
+using NinjaTrader.Core.FloatingPoint;
+#endregion
+
+namespace NinjaTrader.NinjaScript.Indicators
+{
+    public class {{CLASS_NAME}} : Indicator
+    {
+        #region Private Variables
+        // Indicators
+        {{INDICATOR_DECLARATIONS}}
+
+        // Tracking
+        private int buyCount = 0;
+        private int sellCount = 0;
+        private int lastBullBar = -1;
+        private int lastBearBar = -1;
+        #endregion
+
+        protected override void OnStateChange()
+        {
+            if (State == State.SetDefaults)
+            {
+                Description = "{{DESCRIPTION}}";
+                Name = "{{CLASS_NAME}}";
+                Calculate = Calculate.OnBarClose;
+                IsOverlay = true;
+                DisplayInDataBox = true;
+                PaintPriceMarkers = false;
+                BarsRequiredToPlot = 20;
+
+                // Default parameter values
+                {{DEFAULT_VALUES}}
+            }
+            else if (State == State.Configure)
+            {
+                {{CONFIGURE_BLOCK}}
+            }
+            else if (State == State.DataLoaded)
+            {
+                {{DATALOADED_BLOCK}}
+            }
+        }
+
+        protected override void OnBarUpdate()
+        {
+            {{BARUPDATE_GUARDS}}
+
+            if (CurrentBar < BarsRequiredToPlot)
+                return;
+
+            {{CORE_LOGIC}}
+
+            // Always show info panel
+            ShowInfo();
+        }
+
+        #region Helper Methods
+        private void ShowInfo()
+        {
+            string info = string.Format(
+                "=== {{CLASS_NAME}} ===\n" +
+                "Signals: {0} Buy | {1} Sell",
+                buyCount, sellCount);
+
+            Draw.TextFixed(this, "infoPanel", info, TextPosition.TopRight,
+                Brushes.White, new SimpleFont("Consolas", 11),
+                Brushes.Black, Brushes.Black, 80);
+        }
+        #endregion
+
+        #region Properties
+        {{PROPERTIES}}
+        #endregion
+    }
+}
